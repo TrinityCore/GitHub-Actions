@@ -36,10 +36,15 @@ export class IssueLabeler {
     const body = issue.body
 
     if (!body.includes('CHANGEME 3.3.5, master or both')) {
-      if (body.includes('3.3.5') && !body.includes('master')) {
+      const regex335 = new RegExp('\\b3.3.5\\b', 'i')
+      const regexMaster = new RegExp('\\bmaster\\b', 'i')
+
+      const has335 = regex335.test(body)
+      const hasMaster = regexMaster.test(body)
+      if (has335 && !hasMaster) {
         core.info('3.3.5 found')
         await this.SetLabel(issue, 'Branch-3.3.5a')
-      } else if (!body.includes('3.3.5') && body.includes('master')) {
+      } else if (!has335 && hasMaster) {
         core.info('master found')
         await this.SetLabel(issue, 'Branch-master')
       } else {
