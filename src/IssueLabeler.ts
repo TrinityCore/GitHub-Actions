@@ -36,7 +36,7 @@ export class IssueLabeler {
     const body = issue.body
 
     if (!body.includes('CHANGEME 3.3.5, master or both')) {
-      const regex335 = new RegExp('\\b3.3.5\\b', 'i')
+      const regex335 = new RegExp(String.raw`\b3[\.]?3[\.]?5[a]?\b`, 'i')
       const regexMaster = new RegExp('\\bmaster\\b', 'i')
 
       const has335 = regex335.test(body)
