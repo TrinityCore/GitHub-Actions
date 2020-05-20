@@ -17,10 +17,10 @@ export class PullRequestLabeler {
     const rawPayload = github.context.payload
     core.debug(`rawPayload: ${JSON.stringify(rawPayload)}`)
 
-    const payload = rawPayload as Webhooks.WebhookPayloadIssues
+    const payload = rawPayload as Webhooks.WebhookPayloadPullRequest
     switch (payload.action) {
       case 'opened':
-        await this.SetBranchLabel(payload.issue)
+        await this.SetBranchLabel(payload.pull_request)
         break
       default:
         throw new Error(`Unhandled issue action ${payload.action}`)
@@ -28,15 +28,17 @@ export class PullRequestLabeler {
   }
 
   private async SetBranchLabel(
-    issue: Webhooks.WebhookPayloadIssuesIssue
+    pr: Webhooks.WebhookPayloadPullRequestPullRequest
   ): Promise<void> {
     core.debug('SetBranchLabel start')
 
-    const body = issue.body
+    core.info(`Base is '${pr.base.ref}'`)
+
+    core.debug('SetBranchLabel end')
   }
 
   private async SetLabel(
-    issue: Webhooks.WebhookPayloadIssuesIssue,
+    pr: Webhooks.WebhookPayloadPullRequestPullRequest,
     label: string
   ): Promise<void> {
     throw new Error('Not implemented')

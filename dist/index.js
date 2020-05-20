@@ -8376,20 +8376,21 @@ class PullRequestLabeler {
             const payload = rawPayload;
             switch (payload.action) {
                 case 'opened':
-                    yield this.SetBranchLabel(payload.issue);
+                    yield this.SetBranchLabel(payload.pull_request);
                     break;
                 default:
                     throw new Error(`Unhandled issue action ${payload.action}`);
             }
         });
     }
-    SetBranchLabel(issue) {
+    SetBranchLabel(pr) {
         return __awaiter(this, void 0, void 0, function* () {
             core.debug('SetBranchLabel start');
-            const body = issue.body;
+            core.info(`Base is '${pr.base.ref}'`);
+            core.debug('SetBranchLabel end');
         });
     }
-    SetLabel(issue, label) {
+    SetLabel(pr, label) {
         return __awaiter(this, void 0, void 0, function* () {
             throw new Error('Not implemented');
         });
