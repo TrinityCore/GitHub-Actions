@@ -1,10 +1,10 @@
-name: 'Your name here'
-description: 'Provide a description here'
+name: 'TrinityCoreGitHubActions-pr-labeler'
+description: 'Pull Request labeler for TrinityCore repositorye'
 author: 'TrinityCore'
 inputs:
-  myInput:              # change this
-    description: 'input description here'
-    default: 'default value if applicable'
+  token:
+    description: 'GitHub token with access to the repository'
+    required: true
 runs:
   using: 'node12'
   main: 'dist/index.js'
