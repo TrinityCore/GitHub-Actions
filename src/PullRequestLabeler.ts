@@ -53,6 +53,8 @@ export class PullRequestLabeler {
     pr: Webhooks.WebhookPayloadPullRequestPullRequest,
     label: string
   ): Promise<void> {
-    throw new Error('Not implemented')
+    await this.octokit.request(`POST ${pr.issue_url}/labels`, {
+      labels: [label]
+    })
   }
 }
