@@ -8387,6 +8387,17 @@ class PullRequestLabeler {
         return __awaiter(this, void 0, void 0, function* () {
             core.debug('SetBranchLabel start');
             core.info(`Base is '${pr.base.ref}'`);
+            switch (pr.base.ref) {
+                case '3.3.5':
+                    yield this.SetLabel(pr, 'Branch-3.3.5a');
+                    break;
+                case 'master':
+                    yield this.SetLabel(pr, 'Branch-master');
+                    break;
+                default:
+                    core.debug(`Unhandled branch '${pr.base.ref}'`);
+                    break;
+            }
             core.debug('SetBranchLabel end');
         });
     }

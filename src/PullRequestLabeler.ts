@@ -34,6 +34,18 @@ export class PullRequestLabeler {
 
     core.info(`Base is '${pr.base.ref}'`)
 
+    switch (pr.base.ref) {
+      case '3.3.5':
+        await this.SetLabel(pr, 'Branch-3.3.5a')
+        break
+      case 'master':
+        await this.SetLabel(pr, 'Branch-master')
+        break
+      default:
+        core.debug(`Unhandled branch '${pr.base.ref}'`)
+        break
+    }
+
     core.debug('SetBranchLabel end')
   }
 
