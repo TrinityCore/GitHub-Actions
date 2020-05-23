@@ -8,22 +8,25 @@ export class PullRequestLabeler {
     this.octokit = new github.GitHub(token)
   }
 
-  async LabelCurrentContextPullRequest(): Promise<void> {
+  async LabelPullRequests(): Promise<void> {
     const context = github.context
 
-    if (context.eventName !== 'pull_request')
+    if (context.eventName !== 'schedule')
       throw new Error(`Event '${context.eventName}' is not supported`)
 
-    const rawPayload = github.context.payload
-    core.debug(`rawPayload: ${JSON.stringify(rawPayload)}`)
+    const searchResult = this.octokit.search.issuesAndPullRequests({
+      q: `repo:${context.repo.owner}/${context.repo.repo} type:pr state:open -label:Branch-master -label:Branch-3.3.5a`
+    })
 
-    const payload = rawPayload as Webhooks.WebhookPayloadPullRequest
-    switch (payload.action) {
-      case 'opened':
-        await this.SetBranchLabel(payload.pull_request)
-        break
-      default:
-        throw new Error(`Unhandled issue action ${payload.action}`)
+    const prs = (await searchResult).data.items
+    core.info(`Found ${prs.length} pull requests`)
+
+    for (const prSearchResult of prs) {
+      const prItem = (
+        await this.octokit.request(`GET ${prSearchResult.pull_request['url']}`)
+      ).data as Webhooks.WebhookPayloadPullRequestPullRequest
+      core.info(`Processing pull request ${prItem.html_url}`)
+      await this.SetBranchLabel(prItem)
     }
   }
 

@@ -7,7 +7,7 @@ async function run(): Promise<void> {
 
     const token = core.getInput('token', {required: true})
     const labeler = new PullRequestLabeler(token)
-    await labeler.LabelCurrentContextPullRequest()
+    await labeler.LabelPullRequests()
 
     core.debug('Finished')
   } catch (error) {

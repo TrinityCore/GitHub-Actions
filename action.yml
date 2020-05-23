@@ -1,5 +1,5 @@
 name: 'TrinityCoreGitHubActions-pr-labeler'
-description: 'Pull Request labeler for TrinityCore repositorye'
+description: 'Pull Request labeler for TrinityCore repository'
 author: 'TrinityCore'
 inputs:
   token:
