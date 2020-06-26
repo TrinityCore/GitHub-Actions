@@ -18,6 +18,12 @@ export class IssueLabeler {
     core.debug(`rawPayload: ${JSON.stringify(rawPayload)}`)
 
     const payload = rawPayload as Webhooks.WebhookPayloadIssues
+    
+    // disabled for forks
+    if (payload.repository.fork) {
+      return
+    }
+
     switch (payload.action) {
       case 'opened':
         await this.SetBranchLabel(payload.issue)

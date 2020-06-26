@@ -2969,6 +2969,10 @@ class IssueLabeler {
             const rawPayload = github.context.payload;
             core.debug(`rawPayload: ${JSON.stringify(rawPayload)}`);
             const payload = rawPayload;
+            // disabled for forks
+            if (payload.repository.fork) {
+                return;
+            }
             switch (payload.action) {
                 case 'opened':
                     yield this.SetBranchLabel(payload.issue);
