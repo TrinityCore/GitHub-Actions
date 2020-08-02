@@ -3797,6 +3797,37 @@ class IssueCloser {
             const rawPayload = github.context.payload;
             core.debug(`rawPayload: ${JSON.stringify(rawPayload)}`);
             const payload = rawPayload;
+            // disabled for forks
+            if (payload.repository.fork) {
+                return;
+            }
+            for (const commit of payload.commits) {
+                yield this.ProcessCommit(commit, payload.repository.issues_url);
+            }
+        });
+    }
+    ProcessCommit(commit, issues_url) {
+        return __awaiter(this, void 0, void 0, function* () {
+            core.debug('ProcessCommit start');
+            const regex = new RegExp('[,]*\\b(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)[ :]*#([0-9]+)', 'gi');
+            const message = commit.message;
+            let matches = regex.exec(message);
+            while (matches !== null) {
+                const element = matches[0];
+                core.debug(`Closing issue '${element}'`);
+                matches = regex.exec(message);
+                yield this.CloseIssue(element[2], issues_url);
+            }
+            core.debug('ProcessCommit end');
+        });
+    }
+    CloseIssue(issueId, issues_url) {
+        return __awaiter(this, void 0, void 0, function* () {
+            core.debug('CloseIssue start');
+            this.octokit.request(`PATCH ${issues_url.replace('{/number}', '/')}${issueId}`, {
+                state: "closed"
+            });
+            core.debug('CloseIssue end');
         });
     }
 }
