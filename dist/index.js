@@ -3802,7 +3802,12 @@ class IssueCloser {
                 return;
             }
             for (const commit of payload.commits) {
-                yield this.ProcessCommit(commit, payload.repository.issues_url);
+                try {
+                    yield this.ProcessCommit(commit, payload.repository.issues_url);
+                }
+                catch (error) {
+                    core.error(error);
+                }
             }
         });
     }
@@ -3813,18 +3818,50 @@ class IssueCloser {
             const message = commit.message;
             let matches = regex.exec(message);
             while (matches !== null) {
-                const element = matches[2];
-                core.debug(`Closing issue '${element}'`);
+                const issueId = matches[2];
+                core.debug(`Found issue '${issueId}'`);
                 matches = regex.exec(message);
-                yield this.CloseIssue(element, issues_url);
+                const issue = yield this.GetIssue(issueId, issues_url);
+                if (issue && issue.state == 'open') {
+                    yield this.AddComment(issue.comments_url, commit.id);
+                    yield this.CloseIssue(issueId, issues_url);
+                }
             }
             core.debug('ProcessCommit end');
+        });
+    }
+    GetIssue(issueId, issues_url) {
+        return __awaiter(this, void 0, void 0, function* () {
+            core.debug('GetIssue start');
+            try {
+                const response = yield this.octokit.request(`GET ${issues_url}`, {
+                    number: issueId,
+                    state: 'closed'
+                });
+                return response.data;
+            }
+            catch (error) {
+                return null;
+            }
+            finally {
+                core.debug('GetIssue end');
+            }
+        });
+    }
+    AddComment(comments_url, comment) {
+        return __awaiter(this, void 0, void 0, function* () {
+            core.debug('AddComment start');
+            yield this.octokit.request(`POST ${comments_url}`, {
+                body: comment
+            });
+            core.debug('AddComment end');
         });
     }
     CloseIssue(issueId, issues_url) {
         return __awaiter(this, void 0, void 0, function* () {
             core.debug('CloseIssue start');
-            this.octokit.request(`PATCH ${issues_url.replace('{/number}', '/')}${issueId}`, {
+            this.octokit.request(`PATCH ${issues_url}`, {
+                number: issueId,
                 state: 'closed'
             });
             core.debug('CloseIssue end');
