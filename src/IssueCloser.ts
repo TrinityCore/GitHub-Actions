@@ -40,10 +40,10 @@ export class IssueCloser {
     let matches = regex.exec(message)
 
     while (matches !== null) {
-        const element = matches[0]
+        const element = matches[2]
         core.debug(`Closing issue '${element}'`)
         matches = regex.exec(message)
-        await this.CloseIssue(element[2], issues_url)
+        await this.CloseIssue(element, issues_url)
     }
 
     core.debug('ProcessCommit end')
@@ -57,7 +57,7 @@ export class IssueCloser {
     this.octokit.request(
         `PATCH ${issues_url.replace('{/number}', '/')}${issueId}`,
         {
-            state: "closed"
+            state: 'closed'
         }
     )
     core.debug('CloseIssue end')

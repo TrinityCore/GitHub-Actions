@@ -3813,10 +3813,10 @@ class IssueCloser {
             const message = commit.message;
             let matches = regex.exec(message);
             while (matches !== null) {
-                const element = matches[0];
+                const element = matches[2];
                 core.debug(`Closing issue '${element}'`);
                 matches = regex.exec(message);
-                yield this.CloseIssue(element[2], issues_url);
+                yield this.CloseIssue(element, issues_url);
             }
             core.debug('ProcessCommit end');
         });
@@ -3825,7 +3825,7 @@ class IssueCloser {
         return __awaiter(this, void 0, void 0, function* () {
             core.debug('CloseIssue start');
             this.octokit.request(`PATCH ${issues_url.replace('{/number}', '/')}${issueId}`, {
-                state: "closed"
+                state: 'closed'
             });
             core.debug('CloseIssue end');
         });
