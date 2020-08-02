@@ -39,7 +39,9 @@ export class IssueLabeler {
   ): Promise<void> {
     core.debug('SetBranchLabel start')
 
-    const body = issue.body
+    const regexCodeBlock = new RegExp('`{3}.*?`{3}', 'igs')
+    const body = issue.body.replace(regexCodeBlock, '')
+    core.debug("Body: " + body)
 
     if (!body.includes('CHANGEME 3.3.5, master or both')) {
       const regex335 = new RegExp(String.raw`\b3[\.]?3[\.]?5[a]?\b`, 'i')
