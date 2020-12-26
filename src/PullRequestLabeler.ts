@@ -11,22 +11,25 @@ export class PullRequestLabeler {
   async LabelPullRequests(): Promise<void> {
     const context = github.context
 
-    if (context.eventName !== 'schedule')
+    if (context.eventName !== 'pull_request_target')
       throw new Error(`Event '${context.eventName}' is not supported`)
 
-    const searchResult = this.octokit.search.issuesAndPullRequests({
-      q: `repo:${context.repo.owner}/${context.repo.repo} type:pr state:open -label:Branch-master -label:Branch-3.3.5a`
-    })
+    const rawPayload = context.payload
+    core.debug(`rawPayload: ${JSON.stringify(rawPayload)}`)
 
-    const prs = (await searchResult).data.items
-    core.info(`Found ${prs.length} pull requests`)
+    const payload = rawPayload as Webhooks.WebhookPayloadPullRequest
 
-    for (const prSearchResult of prs) {
-      const prItem = (
-        await this.octokit.request(`GET ${prSearchResult.pull_request['url']}`)
-      ).data as Webhooks.WebhookPayloadPullRequestPullRequest
-      core.info(`Processing pull request ${prItem.html_url}`)
-      await this.SetBranchLabel(prItem)
+    // disabled for forks
+    if (payload.repository.fork) {
+      return
+    }
+
+    switch (payload.action) {
+      case 'opened':
+        await this.SetBranchLabel(payload.pull_request)
+        break
+      default:
+        throw new Error(`Unhandled pr action ${payload.action}`)
     }
   }
 

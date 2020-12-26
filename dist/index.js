@@ -8369,17 +8369,21 @@ class PullRequestLabeler {
     LabelPullRequests() {
         return __awaiter(this, void 0, void 0, function* () {
             const context = github.context;
-            if (context.eventName !== 'schedule')
+            if (context.eventName !== 'pull_request_target')
                 throw new Error(`Event '${context.eventName}' is not supported`);
-            const searchResult = this.octokit.search.issuesAndPullRequests({
-                q: `repo:${context.repo.owner}/${context.repo.repo} type:pr state:open -label:Branch-master -label:Branch-3.3.5a`
-            });
-            const prs = (yield searchResult).data.items;
-            core.info(`Found ${prs.length} pull requests`);
-            for (const prSearchResult of prs) {
-                const prItem = (yield this.octokit.request(`GET ${prSearchResult.pull_request['url']}`)).data;
-                core.info(`Processing pull request ${prItem.html_url}`);
-                yield this.SetBranchLabel(prItem);
+            const rawPayload = context.payload;
+            core.debug(`rawPayload: ${JSON.stringify(rawPayload)}`);
+            const payload = rawPayload;
+            // disabled for forks
+            if (payload.repository.fork) {
+                return;
+            }
+            switch (payload.action) {
+                case 'opened':
+                    yield this.SetBranchLabel(payload.pull_request);
+                    break;
+                default:
+                    throw new Error(`Unhandled pr action ${payload.action}`);
             }
         });
     }
