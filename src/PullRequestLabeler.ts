@@ -47,6 +47,9 @@ export class PullRequestLabeler {
       case 'master':
         await this.SetLabel(pr, 'Branch-master')
         break
+        case 'cata_classic':
+        await this.SetLabel(pr, 'Branch-cata_classic')
+        break
       default:
         core.debug(`Unhandled branch '${pr.base.ref}'`)
         break
