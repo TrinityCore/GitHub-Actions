@@ -18,7 +18,7 @@ export class IssueLabeler {
     core.debug(`rawPayload: ${JSON.stringify(rawPayload)}`)
 
     const payload = rawPayload as Webhooks.WebhookPayloadIssues
-    
+
     // disabled for forks
     if (payload.repository.fork) {
       return
@@ -43,18 +43,23 @@ export class IssueLabeler {
     const body = issue.body.replace(regexCodeBlock, '')
     core.debug("Body: " + body)
 
-    if (!body.includes('CHANGEME 3.3.5, master or both')) {
+    if (!body.includes('CHANGEME 3.3.5, master, cata_classic or all')) {
       const regex335 = new RegExp(String.raw`\b3[\.]?3[\.]?5[a]?\b`, 'i')
       const regexMaster = new RegExp('\\bmaster\\b', 'i')
+      const regexCata = new RegExp('\\bcata_classic\\b', 'i')
 
       const has335 = regex335.test(body)
       const hasMaster = regexMaster.test(body)
-      if (has335 && !hasMaster) {
+      const hasCata = regexCata.test(body)
+      if (has335 && !hasMaster && !hasCata) {
         core.info('3.3.5 found')
         await this.SetLabel(issue, 'Branch-3.3.5a')
-      } else if (!has335 && hasMaster) {
+      } else if (!has335 && hasMaster && !hasCata) {
         core.info('master found')
         await this.SetLabel(issue, 'Branch-master')
+      } else if (!has335 && !hasMaster && hasCata) {
+        core.info('cata_classic found')
+        await this.SetLabel(issue, 'Branch-cata_classic')
       } else {
         core.info('branch not set')
       }
