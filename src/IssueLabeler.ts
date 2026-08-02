@@ -1,11 +1,16 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import {Webhooks} from '@octokit/webhooks'
+import {WebhookEventDefinition} from '@octokit/webhooks/types'
+import {GitHub} from '@actions/github/lib/utils'
+import {apiVersionPlugin} from './versionedOctokit'
+
+type WebhookPayloadIssues = WebhookEventDefinition<'issues-opened'>;
+type WebhookPayloadIssuesIssue = WebhookPayloadIssues['issue']
 
 export class IssueLabeler {
-  private octokit: github.GitHub
+  private octokit: InstanceType<typeof GitHub>
   constructor(token: string) {
-    this.octokit = new github.GitHub(token)
+    this.octokit = github.getOctokit(token, undefined, apiVersionPlugin)
   }
 
   async LabelCurrentContextIssue(): Promise<void> {
@@ -14,10 +19,8 @@ export class IssueLabeler {
     if (context.eventName !== 'issues')
       throw new Error(`Event '${context.eventName}' is not supported`)
 
-    const rawPayload = github.context.payload
-    core.debug(`rawPayload: ${JSON.stringify(rawPayload)}`)
-
-    const payload = rawPayload as Webhooks.WebhookPayloadIssues
+    const payload = github.context.payload as WebhookEventDefinition<'issues-opened'>;
+    core.debug(`rawPayload: ${JSON.stringify(payload)}`)
 
     // disabled for forks
     if (payload.repository.fork) {
@@ -35,13 +38,13 @@ export class IssueLabeler {
   }
 
   private async SetBranchLabel(
-    issue: Webhooks.WebhookPayloadIssuesIssue
+    issue: WebhookPayloadIssuesIssue
   ): Promise<void> {
     core.debug('SetBranchLabel start')
 
     const regexCodeBlock = new RegExp('`{3}.*?`{3}', 'igs')
-    const body = issue.body.replace(regexCodeBlock, '')
-    core.debug("Body: " + body)
+    const body = issue.body?.replace(regexCodeBlock, '') ?? ''
+    core.debug(`Body: ${body}`)
 
     if (!body.includes('CHANGEME 3.3.5, master, cata_classic or all')) {
       const regex335 = new RegExp(String.raw`\b3[\.]?3[\.]?5[a]?\b`, 'i')
@@ -71,37 +74,39 @@ export class IssueLabeler {
   }
 
   private async SetMissingHashLabel(
-    issue: Webhooks.WebhookPayloadIssuesIssue
+    issue: WebhookPayloadIssuesIssue
   ): Promise<void> {
     core.debug('SetMissingHashLabel start')
 
     const body = issue.body
-    const regex = new RegExp('\\b[a-f0-9]{7,40}\\b', 'gi')
-    let matches = regex.exec(body)
-
     let found = false
 
-    while (matches !== null) {
-      const element = matches[0]
-      core.debug(`Checking '${element}' as valid commit SHA`)
-      matches = regex.exec(body)
+    if (body) {
+      const regex = new RegExp('\\b[a-f0-9]{7,40}\\b', 'gi')
+      let matches = regex.exec(body)
 
-      try {
-        await this.octokit.request(
-          `GET ${issue.repository_url}/commits/${element}`,
-          {
+      while (matches != null) {
+        const element = matches[0]
+        core.debug(`Checking '${element}' as valid commit SHA`)
+        matches = regex.exec(body)
+
+        try {
+          await this.octokit.rest.repos.getCommit({
+            owner: github.context.repo.owner,
+            repo: github.context.repo.repo,
+            ref: element,
             mediaType: {
-              format: 'sha+json'
+              format: 'sha'
             }
-          }
-        )
+          })
 
-        core.debug(`Found valid commit SHA '${element}'`)
-        found = true
-        break
-      } catch (error) {
-        core.debug(`'${element}' is not a valid SHA commit`)
-        core.debug(error)
+          core.debug(`Found valid commit SHA '${element}'`)
+          found = true
+          break
+        } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+          core.debug(`'${element}' is not a valid SHA commit`)
+          core.debug(error)
+        }
       }
     }
 
@@ -112,14 +117,14 @@ export class IssueLabeler {
   }
 
   private async SetLabel(
-    issue: Webhooks.WebhookPayloadIssuesIssue,
+    issue: WebhookPayloadIssuesIssue,
     label: string
   ): Promise<void> {
-    await this.octokit.request(
-      `POST ${issue.labels_url.replace('{/name}', '')}`,
-      {
-        labels: [label]
-      }
-    )
+    await this.octokit.rest.issues.addLabels({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      issue_number: issue.number,
+      labels: [label]
+    })
   }
 }
