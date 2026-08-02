@@ -1,24 +1,24 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import {Webhooks} from '@octokit/webhooks'
-import {Octokit} from '@octokit/rest'
+import {WebhookEventDefinition} from '@octokit/webhooks/types'
+import {GitHub} from '@actions/github/lib/utils';
+import {apiVersionPlugin} from './versionedOctokit'
 
 export class IssueCloser {
-  private octokit: github.GitHub
+  private octokit: InstanceType<typeof GitHub>;
   constructor(token: string) {
-    this.octokit = new github.GitHub(token)
+    this.octokit = github.getOctokit(token, undefined, apiVersionPlugin)
   }
 
   async CloseCurrentContextIssues(): Promise<void> {
     const context = github.context
 
-    if (context.eventName !== 'push')
+    if (context.eventName !== 'push') {
         throw new Error(`Event '${context.eventName}' is not supported`)
+    }
 
-    const rawPayload = github.context.payload
-    core.debug(`rawPayload: ${JSON.stringify(rawPayload)}`)
-
-    const payload = rawPayload as Webhooks.WebhookPayloadPush
+    const payload = github.context.payload as WebhookEventDefinition<'push'>;
+    core.debug(`rawPayload: ${JSON.stringify(payload)}`);
 
     // disabled for forks
     if (payload.repository.fork) {
@@ -28,9 +28,9 @@ export class IssueCloser {
     for (const commit of payload.commits) {
         try
         {
-            await this.ProcessCommit(commit, payload.repository.issues_url);
+            await this.ProcessCommit(commit);
         }
-        catch(error)
+        catch (error: any) // eslint-disable-line @typescript-eslint/no-explicit-any
         {
             core.error(error);
         }
@@ -38,25 +38,24 @@ export class IssueCloser {
   }
 
   private async ProcessCommit(
-      commit: any,
-      issues_url: string
+      commit: WebhookEventDefinition<'push'>['commits'][number]
   ): Promise<void> {
     core.debug('ProcessCommit start')
-    
+
     const regex = new RegExp('[,]*\\b(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)[ :]*#([0-9]+)', 'gi')
     const message = commit.message;
     let matches = regex.exec(message)
 
     while (matches !== null) {
-        const issueId = matches[2]
+        const issueId = +matches[2]
         core.debug(`Found issue '${issueId}'`)
         matches = regex.exec(message)
 
-        const issue = await this.GetIssue(issueId, issues_url)
-        if (issue && issue.state == 'open')
+        const issue = await this.GetIssue(issueId)
+        if (issue && issue.state === 'open')
         {
-            await this.AddComment(issue.comments_url, commit.id)
-            await this.CloseIssue(issueId, issues_url)
+            await this.AddComment(issueId, commit.id)
+            await this.CloseIssue(issueId)
         }
     }
 
@@ -64,23 +63,20 @@ export class IssueCloser {
   }
 
   private async GetIssue(
-    issueId: string,
-    issues_url: string
-  ) : Promise<Octokit.IssuesGetResponse | null> {
+    issueId: number
+  ) {
     core.debug('GetIssue start')
     try
     {
-        const response = await this.octokit.request(
-            `GET ${issues_url}`,
-            {
-                number: issueId,
-                state: 'closed'
-            }
-        ) as Octokit.Response<Octokit.IssuesGetResponse>
+        const response = await this.octokit.rest.issues.get({
+            owner: github.context.repo.owner,
+            repo: github.context.repo.repo,
+            issue_number: issueId
+        })
 
         return response.data;
     }
-    catch(error)
+    catch(error) // eslint-disable-line @typescript-eslint/no-unused-vars
     {
         return null
     }
@@ -91,33 +87,31 @@ export class IssueCloser {
   }
 
   private async AddComment(
-    comments_url : string,
+    issueId: number,
     comment: string
   ): Promise<void> {
     core.debug('AddComment start')
 
-    await this.octokit.request(
-        `POST ${comments_url}`,
-        {
-            body: comment
-        }
-    )
+    await this.octokit.rest.issues.createComment({
+        owner: github.context.repo.owner,
+        repo: github.context.repo.repo,
+        issue_number: issueId,
+        body: comment
+    })
 
     core.debug('AddComment end')
   }
 
   private async CloseIssue(
-    issueId: string,
-    issues_url: string
+    issueId: number
   ) : Promise<void> {
     core.debug('CloseIssue start')
-    this.octokit.request(
-        `PATCH ${issues_url}`,
-        {
-            number: issueId,
-            state: 'closed'
-        }
-    )
+    await this.octokit.rest.issues.update({
+        owner: github.context.repo.owner,
+        repo: github.context.repo.repo,
+        issue_number: issueId,
+        state: 'closed'
+    })
     core.debug('CloseIssue end')
   }
 }
