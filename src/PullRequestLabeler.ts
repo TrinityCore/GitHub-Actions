@@ -1,11 +1,16 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import {Webhooks} from '@octokit/webhooks'
+import {WebhookEventDefinition} from '@octokit/webhooks/types'
+import {GitHub} from '@actions/github/lib/utils'
+import {apiVersionPlugin} from './versionedOctokit'
+
+type WebhookPayloadPullRequest = WebhookEventDefinition<'pull-request-opened'>
+type WebhookPayloadPullRequestPullRequest = WebhookPayloadPullRequest['pull_request']
 
 export class PullRequestLabeler {
-  private octokit: github.GitHub
+  private octokit: InstanceType<typeof GitHub>
   constructor(token: string) {
-    this.octokit = new github.GitHub(token)
+    this.octokit = github.getOctokit(token, undefined, apiVersionPlugin)
   }
 
   async LabelPullRequests(): Promise<void> {
@@ -14,10 +19,9 @@ export class PullRequestLabeler {
     if (context.eventName !== 'pull_request_target')
       throw new Error(`Event '${context.eventName}' is not supported`)
 
-    const rawPayload = context.payload
-    core.debug(`rawPayload: ${JSON.stringify(rawPayload)}`)
+    const payload = context.payload as WebhookPayloadPullRequest
+    core.debug(`rawPayload: ${JSON.stringify(payload)}`)
 
-    const payload = rawPayload as Webhooks.WebhookPayloadPullRequest
 
     // disabled for forks
     if (payload.repository.fork) {
@@ -34,7 +38,7 @@ export class PullRequestLabeler {
   }
 
   private async SetBranchLabel(
-    pr: Webhooks.WebhookPayloadPullRequestPullRequest
+    pr: WebhookPayloadPullRequestPullRequest
   ): Promise<void> {
     core.debug('SetBranchLabel start')
 
@@ -59,10 +63,13 @@ export class PullRequestLabeler {
   }
 
   private async SetLabel(
-    pr: Webhooks.WebhookPayloadPullRequestPullRequest,
+    pr: WebhookPayloadPullRequestPullRequest,
     label: string
   ): Promise<void> {
-    await this.octokit.request(`POST ${pr.issue_url}/labels`, {
+    await this.octokit.rest.issues.addLabels({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      issue_number: pr.number,
       labels: [label]
     })
   }
