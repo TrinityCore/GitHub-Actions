@@ -10,9 +10,9 @@ async function run(): Promise<void> {
     await labeler.LabelPullRequests()
 
     core.debug('Finished')
-  } catch (error) {
+  } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
     core.setFailed(error.message)
   }
 }
 
-run()
+void run()
